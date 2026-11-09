@@ -1,0 +1,48 @@
+### ============================================================================
+### CASO C-04: Mitigación de timing attack en login (RN-08)
+### ============================================================================
+### Consigna: Correo existente con contraseña mala, y correo inexistente
+### Resultado esperado: 401 con el mismo cuerpo y un tiempo parecido
+### ============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+
+### 1. Correo existente con contraseña errónea
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "PasswordTotalmenteErronea!"
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 401 Unauthorized
+# Content-Type: application/json
+#
+# {
+#   "detail": "Credenciales incorrectas"
+# }
+# ------------------------------------------------------------------------------
+
+### 2. Correo inexistente en la base de datos
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "usuario_fantasma_no_existe@example.com",
+  "password": "PasswordCualquiera123!"
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 401 Unauthorized
+# Content-Type: application/json
+#
+# {
+#   "detail": "Credenciales incorrectas"
+# }
+# El cuerpo es idéntico y el tiempo de respuesta es indistinguible gracias
+# al cómputo del hash ficticio precomputado durante el lifespan del servidor.
+# ------------------------------------------------------------------------------

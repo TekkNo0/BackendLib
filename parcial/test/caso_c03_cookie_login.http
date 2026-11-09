@@ -1,0 +1,61 @@
+### ============================================================================
+### CASO C-03: Cookie de sesión HttpOnly y rechazo de Bearer (RN-08)
+### ============================================================================
+### Consigna: La cookie del login
+### Resultado esperado: Set-Cookie con HttpOnly, SameSite=Lax y Max-Age;
+### el cuerpo sin token; sin cookie o con Authorization: Bearer, 401
+### ============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+
+### 1. Iniciar sesión exitosamente
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Set-Cookie: access_token=eyJ...; Max-Age=1800; Path=/; HttpOnly; SameSite=lax
+# Content-Type: application/json
+#
+# {
+#   "mensaje": "Sesión iniciada",
+#   "debe_cambiar_password": false,
+#   "expira_en_segundos": 1800
+# }
+# NOTA: El token NO viaja en el cuerpo JSON de la respuesta.
+# ------------------------------------------------------------------------------
+
+### 2. Intento de acceso a ruta protegida sin enviar la cookie
+GET {{baseUrl}}/auth/yo
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 401 Unauthorized
+# Content-Type: application/json
+#
+# {
+#   "detail": "No autenticado: falta cookie access_token"
+# }
+# ------------------------------------------------------------------------------
+
+### 3. Intento de acceso a ruta protegida enviando cabecera Authorization: Bearer
+GET {{baseUrl}}/auth/yo
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.tokenFalsoInvalido
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 401 Unauthorized
+# Content-Type: application/json
+#
+# {
+#   "detail": "No autenticado: falta cookie access_token"
+# }
+# La autenticación por Bearer está estrictamente deshabilitada en favor de la cookie.
+# ------------------------------------------------------------------------------

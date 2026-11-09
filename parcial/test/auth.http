@@ -1,0 +1,133 @@
+### CASO C-02: Registro de cliente y unicidad (RN-02)
+# 1. Registro exitoso
+# @name registroExitoso
+POST http://127.0.0.1:8000/auth/registro
+Content-Type: application/json
+
+{
+  "nombre": "Carlos Gómez",
+  "email": "carlos@example.com",
+  "password": "passwordSeguro123"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 201 Created
+# {"id": ..., "email": "carlos@example.com", "nombre": "Carlos Gómez", "activo": true, "debe_cambiar_password": false}
+
+### 2. Intento de re-registro con el mismo correo (conflicto)
+POST http://127.0.0.1:8000/auth/registro
+Content-Type: application/json
+
+{
+  "nombre": "Carlos Gómez Clon",
+  "email": "carlos@example.com",
+  "password": "otraPassword123"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 409 Conflict
+# {"detail": "Ya existe un usuario registrado con ese correo electrónico"}
+
+
+### CASO C-03: Cookie HttpOnly del login (RN-08)
+# @name loginAdmin
+POST http://127.0.0.1:8000/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "adminpassword"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Set-Cookie: access_token=eyJhbG...; Max-Age=1800; Path=/; HttpOnly; SameSite=lax
+# {"mensaje": "Sesión iniciada", "debe_cambiar_password": false, "expira_en_segundos": 1800}
+# NOTA: El token NO viaja en el cuerpo JSON.
+
+### Intento de acceso sin cookie a ruta protegida
+GET http://127.0.0.1:8000/auth/yo
+
+# Respuesta esperada:
+# HTTP/1.1 401 Unauthorized
+# {"detail": "No autenticado: falta cookie access_token"}
+
+### Intento de acceso enviando Authorization: Bearer (prohibido)
+GET http://127.0.0.1:8000/auth/yo
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Respuesta esperada:
+# HTTP/1.1 401 Unauthorized
+# {"detail": "No autenticado: falta cookie access_token"}
+
+
+### CASO C-04: Credenciales erróneas y timing attack mitigation (RN-08)
+# 1. Correo existente con contraseña incorrecta
+POST http://127.0.0.1:8000/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "contrasenaIncorrecta"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 401 Unauthorized
+# {"detail": "Credenciales incorrectas"}
+
+### 2. Correo inexistente
+POST http://127.0.0.1:8000/auth/login
+Content-Type: application/json
+
+{
+  "email": "no_existo_en_la_base@example.com",
+  "password": "cualquierPassword"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 401 Unauthorized
+# {"detail": "Credenciales incorrectas"}
+# El cuerpo es idéntico y el tiempo de respuesta es equivalente por el dummy hash.
+
+
+### CASO C-05: Seis intentos fallidos seguidos y rate limiting (RN-07)
+# Intento fallido 1
+POST http://127.0.0.1:8000/auth/login
+Content-Type: application/json
+
+{"email": "victima@example.com", "password": "fallo1"}
+
+### Intento fallido 2
+POST http://127.0.0.1:8000/auth/login
+Content-Type: application/json
+
+{"email": "victima@example.com", "password": "fallo2"}
+
+### Intento fallido 3
+POST http://127.0.0.1:8000/auth/login
+Content-Type: application/json
+
+{"email": "victima@example.com", "password": "fallo3"}
+
+### Intento fallido 4
+POST http://127.0.0.1:8000/auth/login
+Content-Type: application/json
+
+{"email": "victima@example.com", "password": "fallo4"}
+
+### Intento fallido 5
+POST http://127.0.0.1:8000/auth/login
+Content-Type: application/json
+
+{"email": "victima@example.com", "password": "fallo5"}
+
+### Intento 6 (supera el límite de 5 fallos en 60 segundos)
+POST http://127.0.0.1:8000/auth/login
+Content-Type: application/json
+
+{"email": "victima@example.com", "password": "fallo6"}
+
+# Respuesta esperada:
+# HTTP/1.1 429 Too Many Requests
+# Retry-After: 60
+# {"detail": "Demasiados intentos fallidos. Intente nuevamente en 60 segundos."}

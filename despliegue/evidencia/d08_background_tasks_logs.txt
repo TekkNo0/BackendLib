@@ -1,0 +1,11 @@
+=== CASO D-08: Log de Tarea en Segundo Plano (BackgroundTasks) ===
+
+1. Registro de venta en el caso D-03:
+POST /ventas/ -> HTTP 201 Created
+
+2. Inspección de logs de Uvicorn en el contenedor:
+$ docker logs libreria --tail 10
+INFO:     190.15.201.100:54120 - "POST /ventas/ HTTP/1.1" 201 Created
+[BACKGROUND] Comprobante de venta #1 despachado al cliente
+
+Conclusión: La tarea programada mediante BackgroundTasks ejecuta de manera asincrónica e imprime el comprobante en consola inmediatamente DESPUÉS de haber emitido la respuesta HTTP 201 y confirmado la transacción.

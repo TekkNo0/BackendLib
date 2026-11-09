@@ -1,0 +1,41 @@
+### ============================================================================
+### CASO C-01: Parámetro de ruta no entero con sesión iniciada
+### ============================================================================
+### Consigna: Un parámetro de ruta que no es entero, con la sesión iniciada
+### Resultado esperado: 422, sin ejecutar el handler
+### ============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+
+### 1. Iniciar sesión como Administrador para obtener cookie HttpOnly
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+
+### 2. Petición a ruta con parámetro entero inválido (alfanumérico "no-es-entero")
+# @no-cookie-jar
+GET {{baseUrl}}/libros/no-es-entero
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 422 Unprocessable Entity
+# Content-Type: application/json
+#
+# {
+#   "detail": [
+#     {
+#       "loc": ["path", "id"],
+#       "msg": "Input should be a valid integer, unable to parse string as an integer",
+#       "type": "int_parsing"
+#     }
+#   ]
+# }
+# El handler no llega a ejecutarse porque la validación de FastAPI / Pydantic
+# intercepta el tipo antes del cuerpo de la función.
+# ------------------------------------------------------------------------------

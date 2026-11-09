@@ -1,0 +1,22 @@
+### Sonda de Vida (Live)
+# No toca la base de datos. Responde 200 siempre que el proceso esté vivo.
+GET http://127.0.0.1:8000/health/live
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Content-Type: application/json
+# {"status": "live"}
+
+
+### Sonda de Preparación (Ready)
+# Ejecuta SELECT 1 contra la base de datos.
+# Responde 200 si la base responde, o 503 Service Unavailable si la base está caída.
+GET http://127.0.0.1:8000/health/ready
+
+# Respuesta esperada con base conectada:
+# HTTP/1.1 200 OK
+# Content-Type: application/json
+# {"status": "ready"}
+
+# Respuesta esperada si la base no contesta:
+# HTTP/1.1 503 Service Unavailable

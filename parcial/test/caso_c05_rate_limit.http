@@ -1,0 +1,58 @@
+### ============================================================================
+### CASO C-05: Rate limiting tras 5 fallos consecutivos (RN-07)
+### ============================================================================
+### Consigna: Seis intentos fallidos seguidos
+### Resultado esperado: El sexto, 429 con Retry-After y en pocos milisegundos;
+### los cinco fallos están en intento_acceso
+### ============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+
+### 1. Intento fallido 1
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"email": "victima.fuerza.bruta@example.com", "password": "fallo1"}
+
+### 2. Intento fallido 2
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"email": "victima.fuerza.bruta@example.com", "password": "fallo2"}
+
+### 3. Intento fallido 3
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"email": "victima.fuerza.bruta@example.com", "password": "fallo3"}
+
+### 4. Intento fallido 4
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"email": "victima.fuerza.bruta@example.com", "password": "fallo4"}
+
+### 5. Intento fallido 5
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"email": "victima.fuerza.bruta@example.com", "password": "fallo5"}
+
+### 6. Intento fallido 6 (supera el límite de 5 fallos en la ventana de 60 segundos)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"email": "victima.fuerza.bruta@example.com", "password": "fallo6"}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 429 Too Many Requests
+# Retry-After: 60
+# Content-Type: application/json
+#
+# {
+#   "detail": "Demasiados intentos fallidos. Intente nuevamente en 60 segundos."
+# }
+# El intento 6 se rechaza en ~2ms sin calcular bcrypt, y los 5 fallos
+# previos constan asentados en la tabla intento_acceso.
+# ------------------------------------------------------------------------------

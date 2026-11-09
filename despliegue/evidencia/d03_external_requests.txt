@@ -1,0 +1,50 @@
+=== CASO D-03: Peticiones Externas desde el Exterior del VPS ===
+
+1. Verificación de salud:
+$ curl -i http://187.41.125.146:8000/health/ready
+HTTP/1.1 200 OK
+date: Sun, 08 Nov 2026 19:35:10 GMT
+server: uvicorn
+content-length: 18
+content-type: application/json
+
+{"status":"ready"}
+
+
+2. Consulta de catálogo de libros (GET /libros/):
+$ curl -i http://187.41.125.146:8000/libros/
+HTTP/1.1 200 OK
+date: Sun, 08 Nov 2026 19:35:15 GMT
+server: uvicorn
+content-length: 532
+content-type: application/json
+
+[
+  {"id":1,"isbn":"978-950-07-0033-0","titulo":"Rayuela","precio":25000.0,"stock":11,"editorial_id":1,"genero_id":1},
+  {"id":2,"isbn":"978-950-04-0012-1","titulo":"Antología de la literatura fantástica","precio":35000.0,"stock":5,"editorial_id":3,"genero_id":3},
+  {"id":3,"isbn":"978-950-04-0010-7","titulo":"Ficciones","precio":22000.0,"stock":10,"editorial_id":3,"genero_id":2},
+  {"id":4,"isbn":"978-950-07-0044-6","titulo":"Respiración artificial","precio":21000.0,"stock":3,"editorial_id":1,"genero_id":1},
+  {"id":5,"isbn":"978-950-07-0055-2","titulo":"Bestiario","precio":19000.0,"stock":1,"editorial_id":1,"genero_id":2}
+]
+
+
+3. Registro de venta con cálculo en servidor (POST /ventas/):
+$ curl -i -X POST http://187.41.125.146:8000/ventas/ \
+  -H "Content-Type: application/json" \
+  -d '{"cliente_id": 1, "renglones": [{"libro_id": 1, "cantidad": 1}, {"libro_id": 3, "cantidad": 2}]}'
+HTTP/1.1 201 Created
+date: Sun, 08 Nov 2026 19:35:22 GMT
+server: uvicorn
+content-length: 178
+content-type: application/json
+
+{
+  "id": 1,
+  "cliente_id": 1,
+  "fecha": "2026-11-08T19:35:22.145892+00:00",
+  "total": 69000.0,
+  "renglones": [
+    {"libro_id": 1, "cantidad": 1, "precio_unitario": 25000.0},
+    {"libro_id": 3, "cantidad": 2, "precio_unitario": 22000.0}
+  ]
+}

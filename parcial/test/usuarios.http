@@ -1,0 +1,128 @@
+### ============================================================================
+### CASOS DE PRUEBA DE ROLES, AUTORIZACIÓN Y ADMINISTRACIÓN (C-06, C-07, C-08, C-09)
+### ============================================================================
+
+### CASO C-06: 401 contra 403
+# 1. Petición sin cookie a ruta protegida -> 401
+GET http://127.0.0.1:8000/usuarios/1/roles
+
+# Respuesta esperada:
+# HTTP/1.1 401 Unauthorized
+# {"detail": "No autenticado: falta cookie access_token"}
+
+
+### Login como VENDEDOR
+# @name loginVendedor
+POST http://127.0.0.1:8000/auth/login
+Content-Type: application/json
+
+{
+  "email": "vendedor@example.com",
+  "password": "vendedorpassword"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Set-Cookie: access_token=...
+
+### 2. Vendedor intenta acceder a ruta exclusiva de ADMIN -> 403
+# @no-cookie-jar
+GET http://127.0.0.1:8000/usuarios/1/roles
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+
+# Respuesta esperada:
+# HTTP/1.1 403 Forbidden
+# {"detail": "No posee los permisos necesarios para realizar esta acción"}
+
+
+### CASO C-07: Revocación de rol y vencimientos inválidos (RN-03, RN-04)
+# Login como ADMIN
+# @name loginAdmin
+POST http://127.0.0.1:8000/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "adminpassword"
+}
+
+### 1. Vencimiento en el pasado -> 422
+# @no-cookie-jar
+POST http://127.0.0.1:8000/usuarios/3/roles
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "rol": "VENDEDOR",
+  "vence_en": "2020-01-01T00:00:00Z"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 422 Unprocessable Entity
+# {"detail": [{"loc": ["body", "vence_en"], "msg": "Value error, La fecha de vencimiento debe estar en el futuro.", ...}]}
+
+### 2. Vencimiento sin zona horaria -> 422
+# @no-cookie-jar
+POST http://127.0.0.1:8000/usuarios/3/roles
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "rol": "VENDEDOR",
+  "vence_en": "2030-01-01T00:00:00"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 422 Unprocessable Entity
+# {"detail": [{"loc": ["body", "vence_en"], "msg": "Value error, La fecha de vencimiento debe incluir zona horaria.", ...}]}
+
+
+### CASO C-08: Autoprotección del Administrador (RN-05)
+# 1. El administrador intenta revocarse su propio rol ADMIN -> 409
+# @no-cookie-jar
+DELETE http://127.0.0.1:8000/usuarios/1/roles/ADMIN
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+# Respuesta esperada:
+# HTTP/1.1 409 Conflict
+# {"detail": "Un administrador no puede revocarse su propio rol ADMIN"}
+
+
+### CASO C-09: Cambio obligatorio de contraseña (RN-06)
+# Login como usuario con cambio obligatorio (nuevo@example.com)
+# @name loginNuevo
+POST http://127.0.0.1:8000/auth/login
+Content-Type: application/json
+
+{
+  "email": "nuevo@example.com",
+  "password": "provisoriapassword"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# {"mensaje": "Sesión iniciada", "debe_cambiar_password": true, ...}
+
+### 1. Intento de acceder a ruta protegida con cambio pendiente -> 403
+# @no-cookie-jar
+GET http://127.0.0.1:8000/usuarios/1/roles
+Cookie: {{loginNuevo.response.headers.Set-Cookie}}
+
+# Respuesta esperada:
+# HTTP/1.1 403 Forbidden
+# {"detail": "Debe cambiar su contraseña antes de continuar."}
+
+### 2. Acceso permitido a la ruta de cambio de contraseña
+# @no-cookie-jar
+POST http://127.0.0.1:8000/auth/cambiar-password
+Cookie: {{loginNuevo.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "password_actual": "provisoriapassword",
+  "password_nueva": "nuevaPasswordDefinitiva123"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# {"mensaje": "Contraseña actualizada exitosamente"}

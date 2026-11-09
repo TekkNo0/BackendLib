@@ -1,0 +1,57 @@
+### ============================================================================
+### CASO C-11: Rollback atómico ante stock insuficiente (RN-10)
+### ============================================================================
+### Consigna: Venta con Rayuela (1 ejemplar, alcanza) y Bestiario (2 ejemplares,
+### hay 1)
+### Resultado esperado: 409; no hay venta nueva, ni descuentos, ni movimientos:
+### el stock de Rayuela sigue en 10 y la suma de movimientos coincide con el
+### stock en los cinco libros
+### ============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+
+### 1. Iniciar sesión como Vendedor
+# @name loginVendedor
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "vendedor@example.com",
+  "password": "Vendedor123!"
+}
+
+### 2. Intento de venta: Rayuela (ID 1, stock 10, pide 1) y Bestiario (ID 5, stock 1, pide 2)
+# @no-cookie-jar
+POST {{baseUrl}}/ventas
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "cliente_id": 1,
+  "renglones": [
+    {
+      "libro_id": 1,
+      "cantidad": 1
+    },
+    {
+      "libro_id": 5,
+      "cantidad": 2
+    }
+  ]
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 409 Conflict
+# Content-Type: application/json
+#
+# {
+#   "detail": "Stock insuficiente para el libro: Bestiario. Solicitado: 2, Disponible: 1"
+# }
+# Efectos verificables:
+# - Rollback total ejecutado por el Unit of Work.
+# - No se crea ninguna fila en venta ni en renglon_venta.
+# - El stock de Rayuela permanece inalterado en 10.
+# - El stock de Bestiario permanece inalterado en 1.
+# - La suma de movimiento_stock para cada libro coincide exactamente con su stock actual.
+# ------------------------------------------------------------------------------

@@ -1,0 +1,14 @@
+=== CASO D-05: Falla Esperada al Correr sin DATABASE_URL ===
+
+1. Ejecución del contenedor sin inyectar variables de entorno ni archivo .env:
+$ docker run --rm libreria:latest
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Settings
+DATABASE_URL
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.8/v/missing
+
+2. Comprobación del código de salida:
+$ echo $?
+1
+
+Conclusión: La aplicación no provee valores por defecto inseguros para la base de datos. Ante la ausencia de DATABASE_URL, finaliza inmediatamente con error de validación sin quedar sirviendo en estado inválido.

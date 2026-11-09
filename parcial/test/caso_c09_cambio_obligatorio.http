@@ -1,0 +1,74 @@
+### ============================================================================
+### CASO C-09: Intercepción por cambio obligatorio de contraseña (RN-06)
+### ============================================================================
+### Consigna: Cambio obligatorio
+### Resultado esperado: Bloqueado (403) salvo /auth; después del cambio,
+### debe_cambiar_password queda en falso y la misma cookie sirve para las
+### rutas protegidas (200), sin iniciar sesión de nuevo
+### ============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+
+### 1. Iniciar sesión con usuario provisionado con clave provisoria (nuevo@example.com)
+# @name loginNuevo
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "nuevo@example.com",
+  "password": "Nuevo123!"
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Set-Cookie: access_token=...
+# {"mensaje": "Sesión iniciada", "debe_cambiar_password": true, ...}
+# ------------------------------------------------------------------------------
+
+### 2. Intento de acceder a ruta protegida fuera de /auth -> 403 Forbidden
+# @no-cookie-jar
+GET {{baseUrl}}/ventas?page=1&size=10
+Cookie: {{loginNuevo.response.headers.Set-Cookie}}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 403 Forbidden
+# Content-Type: application/json
+#
+# {
+#   "detail": "Debe cambiar su contraseña antes de operar en el sistema"
+# }
+# ------------------------------------------------------------------------------
+
+### 3. Cambio de contraseña obligatorio en /auth/cambiar-password
+# @no-cookie-jar
+POST {{baseUrl}}/auth/cambiar-password
+Cookie: {{loginNuevo.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "password_actual": "Nuevo123!",
+  "password_nueva": "NuevaClaveDefinitiva123!"
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Content-Type: application/json
+#
+# {
+#   "mensaje": "Contraseña actualizada exitosamente"
+# }
+# ------------------------------------------------------------------------------
+
+### 4. Acceso inmediato a la ruta protegida con la MISMA cookie -> 200 OK
+# @no-cookie-jar
+GET {{baseUrl}}/ventas?page=1&size=10
+Cookie: {{loginNuevo.response.headers.Set-Cookie}}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# No se requirió re-login: la sesión continuó viva y desbloqueada.
+# ------------------------------------------------------------------------------

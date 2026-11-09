@@ -1,0 +1,255 @@
+{
+  "version": 4,
+  "step": "done",
+  "owner": "active-orchestrator",
+  "discovery": {
+    "created_by": "discovery-research",
+    "sources": [
+      "docs/consigna_parcial.md"
+    ],
+    "competitors": [
+      {
+        "name": "TP Capítulos 1 a 4 (Base)",
+        "notes_file": "discovery/discovery.md"
+      }
+    ],
+    "problema": "Evolucionar la librería incorporando acceso con roles en base, Unit of Work y repositorios, control atómico de stock mediante movimientos de sólo agregado protegidos por trigger, y empaquetado Docker para despliegue en VPS.",
+    "usuarios": [
+      "ADMIN",
+      "VENDEDOR",
+      "CLIENTE",
+      "PÚBLICO"
+    ],
+    "casos_de_uso": [
+      "Auto-registro atómico de cliente con usuario, rol CLIENTE y cliente",
+      "Login seguro con cookie HttpOnly y rate-limiting de 5 fallos en 60s",
+      "Venta atómica con cálculo en servidor, descuento de stock y movimientos de sólo agregado",
+      "Borrado lógico de libro con índice único parcial de ISBN",
+      "Consulta restringida de ventas propias para clientes"
+    ],
+    "funcionalidades_necesarias": [
+      "Arquitectura Router -> Service -> UoW -> Repository -> Model",
+      "Autenticación bcrypt fuera del bucle con semáforo y token JWT en cookie HttpOnly",
+      "Autorización con roles vigentes consultados en base en cada petición",
+      "Unit of Work atómico y repositorios sin commit",
+      "Stock inmutable por PATCH; tabla movimiento_stock sólo agregado con trigger",
+      "Borrado lógico con índice único parcial WHERE borrado_en IS NULL",
+      "Paginación estandarizada {items, total, page, size, pages}",
+      "Migraciones Alembic (autogenerada + manual para trigger)",
+      "Tests .http y script solo_agregado.sql",
+      "Dockerfile Alpine sin secretos y documentación DEPLOY.md"
+    ],
+    "funcionalidades_opcionales": [
+      "Concurrencia con bloqueo pesimista (Capítulo 7)",
+      "Colas de tareas asincrónicas Redis (Capítulo 8)"
+    ],
+    "reglas_de_negocio": [
+      "RN-01 Unicidad garantizada por BD con 409 legible",
+      "RN-02 Auto-registro en un solo Unit of Work",
+      "RN-03 Asignación única abierta por rol",
+      "RN-04 Permisos evaluados contra asignacion_rol en base por request",
+      "RN-05 Autoprotección de admin y no quedarse sin administradores",
+      "RN-06 Contraseña provisoria fuerza cambio",
+      "RN-07 Rate limiting de login 5 fallos en 60s con 429 y Retry-After",
+      "RN-08 Login tiempo constante y respuesta idéntica",
+      "RN-09 Venta con cálculo en servidor y sin modificación",
+      "RN-10 Venta atómica con descuento de stock y movimientos",
+      "RN-11 Stock sólo cambia vía movimientos",
+      "RN-12 movimiento_stock de sólo agregado con trigger",
+      "RN-13 Borrado lógico preserva ventas históricas",
+      "RN-14 Cliente sólo accede a sus propias ventas",
+      "RN-15 Errores traducidos sin exponer trazas o esquema de BD",
+      "RN-16 Auditoría en evento_seguridad en la misma transacción"
+    ],
+    "integraciones": [
+      "PostgreSQL 16 vía asyncpg y SQLAlchemy 2.0 async",
+      "Docker Alpine y despliegue en VPS"
+    ],
+    "restricciones": [
+      "Python 3.12, FastAPI 0.111, SQLModel 0.0.24, SQLAlchemy 2.0 async",
+      "Cero contraseñas o secretos en código o repositorios",
+      "Esquema creado exclusivamente con Alembic",
+      "Formato de entrega con parcial/ y despliegue/ dentro de zip"
+    ],
+    "riesgos": [
+      "Bloqueo del bucle de eventos por bcrypt síncrono",
+      "Inconsistencia entre libro.stock y suma de movimientos",
+      "Filtración de credenciales en imagen o historial git",
+      "Falla de healthcheck en contenedor Alpine por IPv6 localhost"
+    ],
+    "preguntas_abiertas": [
+      "Nombre del grupo para el archivo zip de entrega",
+      "Disponibilidad de VPS real o generación de evidencia completa documentada"
+    ]
+  },
+  "kb": {
+    "created_by": "kb-creator",
+    "source": "ingest",
+    "discovery": {
+      "problem": "Evolucionar la librería con acceso seguro por roles en base, Unit of Work y repositorios, control atómico de stock con movimientos de sólo agregado protegidos por trigger, y despliegue en VPS.",
+      "system_type": "api",
+      "domain": "ecommerce_libreria",
+      "scale": "public_multi_user",
+      "stack": [
+        "FastAPI",
+        "SQLModel",
+        "SQLAlchemy",
+        "PostgreSQL",
+        "Alembic",
+        "Docker"
+      ],
+      "needs_infra": true
+    },
+    "files": [
+      "knowledge-base/01_vision_y_objetivos.md",
+      "knowledge-base/02_descripcion_general.md",
+      "knowledge-base/03_actores_y_roles.md",
+      "knowledge-base/04_modelo_de_datos.md",
+      "knowledge-base/05_reglas_de_negocio.md",
+      "knowledge-base/06_funcionalidades.md",
+      "knowledge-base/07_flujos_principales.md",
+      "knowledge-base/08_arquitectura_propuesta.md",
+      "knowledge-base/09_decisiones_y_supuestos.md",
+      "knowledge-base/10_preguntas_abiertas.md",
+      "knowledge-base/11_despliegue_docker_vps.md",
+      "knowledge-base/README.md"
+    ]
+  },
+  "roadmap": {
+    "created_by": "roadmap-generator",
+    "source": "CHANGES.md",
+    "changes": [
+      "C-01",
+      "C-02",
+      "C-03",
+      "C-04",
+      "C-05",
+      "C-06",
+      "C-07",
+      "C-08",
+      "C-09",
+      "C-10"
+    ]
+  },
+  "skills": {
+    "recommended": [
+      {
+        "name": "fastapi",
+        "repo": "fastapi/fastapi",
+        "skill": "fastapi",
+        "package": "fastapi/fastapi@fastapi",
+        "installs": "14.3K",
+        "why": "Directrices y convenciones oficiales de FastAPI para diseño de routers, inyección de dependencias y ciclo de vida de peticiones HTTP."
+      },
+      {
+        "name": "fastapi-templates",
+        "repo": "wshobson/agents",
+        "skill": "fastapi-templates",
+        "package": "wshobson/agents@fastapi-templates",
+        "installs": "26.3K",
+        "why": "Estructuras y patrones limpios de arquitectura por capas (Router -> Service -> Repository) para FastAPI asíncrono."
+      },
+      {
+        "name": "postgresql-table-design",
+        "repo": "wshobson/agents",
+        "skill": "postgresql-table-design",
+        "package": "wshobson/agents@postgresql-table-design",
+        "installs": "28.4K",
+        "why": "Diseño óptimo de tablas relacionales en PostgreSQL, índices parciales y triggers de base de datos para movimientos de solo agregado."
+      },
+      {
+        "name": "postgresql-optimization",
+        "repo": "github/awesome-copilot",
+        "skill": "postgresql-optimization",
+        "package": "github/awesome-copilot@postgresql-optimization",
+        "installs": "16.6K",
+        "why": "Estrategias de indexación única condicional (borrado_en IS NULL) y optimización de transacciones seguras en PostgreSQL."
+      },
+      {
+        "name": "sqlalchemy-alembic-expert-best-practices-code-review",
+        "repo": "wispbit-ai/skills",
+        "skill": "sqlalchemy-alembic-expert-best-practices-code-review",
+        "package": "wispbit-ai/skills@sqlalchemy-alembic-expert-best-practices-code-review",
+        "installs": "2.0K",
+        "why": "Buenas prácticas para migraciones con Alembic, modelos SQLModel/SQLAlchemy 2.0 async y sesiones transaccionales Unit of Work."
+      },
+      {
+        "name": "auth-implementation-patterns",
+        "repo": "wshobson/agents",
+        "skill": "auth-implementation-patterns",
+        "package": "wshobson/agents@auth-implementation-patterns",
+        "installs": "20.5K",
+        "why": "Implementación de esquemas de autenticación robustos, JWT en cookies HttpOnly y autorización basada en roles (RBAC)."
+      },
+      {
+        "name": "python-testing-patterns",
+        "repo": "wshobson/agents",
+        "skill": "python-testing-patterns",
+        "package": "wshobson/agents@python-testing-patterns",
+        "installs": "39.2K",
+        "why": "Patrones de testing en Python con fixtures, aislamiento de dependencias y pruebas para endpoints asíncronos y UoW."
+      },
+      {
+        "name": "pytest-coverage",
+        "repo": "github/awesome-copilot",
+        "skill": "pytest-coverage",
+        "package": "github/awesome-copilot@pytest-coverage",
+        "installs": "12.9K",
+        "why": "Configuración de suites de pytest y métricas de cobertura para garantizar los escenarios de aceptación y tests de regresión."
+      },
+      {
+        "name": "multi-stage-dockerfile",
+        "repo": "github/awesome-copilot",
+        "skill": "multi-stage-dockerfile",
+        "package": "github/awesome-copilot@multi-stage-dockerfile",
+        "installs": "31.1K",
+        "why": "Creación de Dockerfiles multi-etapa optimizados sobre imágenes base Alpine mínimas, sin secretos embebidos."
+      },
+      {
+        "name": "docker-compose-patterns",
+        "repo": "docker/skills",
+        "skill": "docker-compose-patterns",
+        "package": "docker/skills@docker-compose-patterns",
+        "installs": "1.7K",
+        "why": "Patrones oficiales de Docker para orquestar la API FastAPI y PostgreSQL con configuración limpia y healthchecks."
+      }
+    ],
+    "installed": [
+      "fastapi",
+      "fastapi-templates",
+      "postgresql-table-design",
+      "auth-implementation-patterns",
+      "docker-compose-patterns"
+    ]
+  },
+  "registry": {
+    "file": ".atl/skill-registry.md",
+    "skills_count": 39
+  },
+  "agents": {
+    "created_by": "agent-instruction",
+    "files": [
+      "CLAUDE.md",
+      "AGENTS.md"
+    ],
+    "reglas_applied": [
+      "No create_all; sólo migraciones Alembic",
+      "Decimal/Numeric para montos de dinero, nunca float",
+      "Índices únicos parciales para ISBN y asignacion_rol",
+      "Cliente.usuario escalar 1 a 1, no lista",
+      "Índices manuales en todas las FKs",
+      "Flush y no commit en repositorios; commit solo en UoW __aexit__",
+      "Router inyecta UoW cerrado; servicio lo abre con async with",
+      "Stock inmutable por PATCH; alteración exclusiva por movimiento_stock",
+      "Disparador append-only en movimiento_stock",
+      "bcrypt en asyncio.to_thread con semáforo y límite 72 bytes en contratos",
+      "Sin secretos por defecto en código/repo",
+      "JWT sólo en cookie access_token HttpOnly",
+      "intento_acceso en sesión/transacción independiente confirmada",
+      "Pydantic extra='forbid' y password_hash nunca en respuestas",
+      "IntegrityError traducido a 409 sin filtrar esquema interno",
+      "Paginación {items, total, page, size, pages} con 422 si page excede",
+      "Docker Alpine base < 100 MB, usuario no-root, healthcheck 127.0.0.1"
+    ]
+  }
+}

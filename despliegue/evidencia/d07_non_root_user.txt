@@ -1,0 +1,11 @@
+=== CASO D-07: Comprobación de Usuario No Root ===
+
+1. Ejecución del comando 'id' dentro del contenedor en ejecución:
+$ docker exec libreria id
+uid=1000(appuser) gid=1000(appuser) groups=1000(appuser)
+
+2. Comprobación de permisos de usuario actual:
+$ docker exec libreria whoami
+appuser
+
+Conclusión: El proceso principal de la aplicación corre bajo el usuario sin privilegios 'appuser' (UID 1000) y no bajo root (UID 0), cumpliendo con el requisito de seguridad del Ejercicio 9.

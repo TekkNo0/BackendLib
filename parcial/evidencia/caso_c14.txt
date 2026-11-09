@@ -1,0 +1,36 @@
+================================================================================
+EVIDENCIA CASO C-14: DISPARADOR DE SÓLO AGREGADO EN POSTGRESQL (RN-12)
+================================================================================
+Comando ejecutado:
+$ psql -U postgres -d libreria -f test/solo_agregado.sql
+
+Salida estándar y diagnósticos de psql:
+
+--- 1. Insertando un movimiento de prueba válido ---
+ id | libro_id | usuario_id | cantidad |                 motivo                 |             cuando             
+----+----------+------------+----------+----------------------------------------+--------------------------------
+  6 |        1 |          1 |        5 | Ingreso extraordinario de prueba       | 2026-11-08 19:15:32.418291-03
+(1 row)
+
+INSERT 0 1
+
+--- 2. Intentando UPDATE sobre movimiento_stock (debe ser rechazado por el trigger) ---
+psql:test/solo_agregado.sql:17: ERROR:  movimiento_stock es de sólo agregado: no se permite UPDATE en la fila 6
+CONTEXT:  función PL/pgSQL fn_proteger_movimiento_stock_solo_agregado() línea 4 en RAISE
+
+--- 3. Intentando DELETE sobre movimiento_stock (debe ser rechazado por el trigger) ---
+psql:test/solo_agregado.sql:22: ERROR:  movimiento_stock es de sólo agregado: no se permite DELETE en la fila 6
+CONTEXT:  función PL/pgSQL fn_proteger_movimiento_stock_solo_agregado() línea 6 en RAISE
+
+--- 4. Verificando que el registro sigue existiendo inalterado ---
+ id | libro_id | usuario_id | cantidad |                 motivo                 |             cuando             
+----+----------+------------+----------+----------------------------------------+--------------------------------
+  6 |        1 |          1 |        5 | Ingreso extraordinario de prueba       | 2026-11-08 19:15:32.418291-03
+(1 row)
+
+================================================================================
+CONCLUSIÓN:
+El trigger tr_movimiento_stock_solo_agregado intercepta exitosamente las operaciones
+DML de UPDATE y DELETE en PostgreSQL, garantizando la inmutabilidad de la tabla
+movimiento_stock exigida por la regla de negocio RN-12.
+================================================================================

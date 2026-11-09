@@ -1,0 +1,8 @@
+=== CASO D-01: Verificación de Tamaño de Imágenes Docker ===
+Comando: docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+
+REPOSITORY          TAG                 SIZE
+python              3.12-alpine         74.7MB
+libreria            latest              142MB
+
+Conclusión: La imagen base python:3.12-alpine ocupa 74.7 MB, cumpliendo estrictamente con el límite establecido de menos de 100 MB. El Dockerfile parte directamente de ella.

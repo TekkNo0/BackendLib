@@ -1,0 +1,77 @@
+### ============================================================================
+### CASO C-02: Registro de cliente y unicidad sin filas huérfanas (RN-01, RN-02)
+### ============================================================================
+### Consigna: Registro; correo repetido de usuario y de cliente
+### Resultado esperado: 201; 409 con mensaje propio, y el registro rechazado no
+### deja ninguna fila suelta
+### ============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+
+### 1. Registro exitoso de un nuevo cliente
+# @name registroExitoso
+POST {{baseUrl}}/auth/registro
+Content-Type: application/json
+
+{
+  "nombre": "Esteban Morales",
+  "email": "esteban.morales@example.com",
+  "password": "PasswordSegura123!"
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 201 Created
+# Content-Type: application/json
+#
+# {
+#   "id": 6,
+#   "email": "esteban.morales@example.com",
+#   "nombre": "Esteban Morales",
+#   "activo": true,
+#   "debe_cambiar_password": false
+# }
+# ------------------------------------------------------------------------------
+
+### 2. Intento de re-registro con el mismo correo de usuario (Conflicto RN-01)
+POST {{baseUrl}}/auth/registro
+Content-Type: application/json
+
+{
+  "nombre": "Esteban Morales Clon",
+  "email": "esteban.morales@example.com",
+  "password": "OtraPassword123!"
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 409 Conflict
+# Content-Type: application/json
+#
+# {
+#   "detail": "Ya existe un usuario registrado con ese correo electrónico"
+# }
+# El registro es rechazado y el Unit of Work ejecuta rollback total:
+# no queda ninguna fila huérfana en usuario, cliente ni asignacion_rol.
+# ------------------------------------------------------------------------------
+
+### 3. Intento de registro con correo existente en tabla cliente (Lucía Fernández)
+POST {{baseUrl}}/auth/registro
+Content-Type: application/json
+
+{
+  "nombre": "Lucía Fernández Intruso",
+  "email": "lucia@example.com",
+  "password": "IntrusoPassword123!"
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 409 Conflict
+# Content-Type: application/json
+#
+# {
+#   "detail": "Ya existe un cliente registrado con ese correo electrónico"
+# }
+# Tampoco se apropia de la ficha del cliente ni deja usuarios huérfanos.
+# ------------------------------------------------------------------------------
