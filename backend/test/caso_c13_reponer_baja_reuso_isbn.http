@@ -1,0 +1,125 @@
+### ============================================================================
+### CASO C-13: Reposición, baja lógica y reutilización de ISBN (RN-01, RN-11, RN-13)
+### ============================================================================
+### Consigna: Reponer un libro; darlo de baja; volver a cargar el mismo ISBN
+### Resultado esperado: Reposición 200 con su movimiento; baja 204; el libro
+### deja de aparecer en el catálogo; el alta con el mismo ISBN, 201; un segundo
+### vigente con ese ISBN, 409; la venta vieja sigue mostrando el título
+### ============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+
+### 1. Iniciar sesión como Administrador
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+
+### 2. Reponer stock del Libro 1 (Rayuela) -> 200 OK
+# @no-cookie-jar
+POST {{baseUrl}}/libros/1/reponer
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "cantidad": 5,
+  "motivo": "Recepción de ejemplares de imprenta"
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Content-Type: application/json
+#
+# {
+#   "id": 1,
+#   "isbn": "978-950-07-0080-0",
+#   "titulo": "Rayuela",
+#   "stock": 15,
+#   ...
+# }
+# Se asienta una fila en movimiento_stock con cantidad = 5 y motivo correspondiente.
+# ------------------------------------------------------------------------------
+
+### 3. Dar de baja lógica al Libro 4 (Respiración artificial, ISBN: 978-950-511-000-4) -> 204 No Content
+# @no-cookie-jar
+DELETE {{baseUrl}}/libros/4
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 204 No Content
+# ------------------------------------------------------------------------------
+
+### 4. Consultar listado de catálogo: el libro 4 ya no aparece
+GET {{baseUrl}}/libros?page=1&size=20
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# {"items": [...], "total": 4, ...}
+# El libro con ID 4 fue filtrado automáticamente por borrado_en IS NULL.
+# ------------------------------------------------------------------------------
+
+### 5. Alta de un nuevo libro con el MISMO ISBN del libro dado de baja -> 201 Created
+# @no-cookie-jar
+POST {{baseUrl}}/libros
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "isbn": "978-950-511-000-4",
+  "titulo": "Respiración artificial (Nueva Edición Aniversario)",
+  "precio": 35000.00,
+  "editorial_id": 1,
+  "genero_id": 1,
+  "autores_ids": [6],
+  "stock_inicial": 10
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 201 Created
+# Permitido por el índice único parcial: WHERE borrado_en IS NULL.
+# ------------------------------------------------------------------------------
+
+### 6. Intento de crear un segundo libro VIGENTE con ese mismo ISBN -> 409 Conflict
+# @no-cookie-jar
+POST {{baseUrl}}/libros
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "isbn": "978-950-511-000-4",
+  "titulo": "Respiración artificial Duplicado Ilegal",
+  "precio": 30000.00,
+  "editorial_id": 1,
+  "genero_id": 1,
+  "autores_ids": [6],
+  "stock_inicial": 5
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 409 Conflict
+# Content-Type: application/json
+#
+# {
+#   "detail": "Ya existe un libro vigente con ese código ISBN"
+# }
+# ------------------------------------------------------------------------------
+
+### 7. Comprobación de integridad histórica: La Venta 1 sigue mostrando el detalle
+# @no-cookie-jar
+GET {{baseUrl}}/ventas/1
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Muestra los renglones históricos con título "Rayuela" y "Ficciones" inalterados.
+# ------------------------------------------------------------------------------

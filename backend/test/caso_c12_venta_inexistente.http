@@ -1,0 +1,112 @@
+### ============================================================================
+### CASO C-12: Rechazo de venta con cliente/libro inexistente o dado de baja (RN-10, RN-13)
+### ============================================================================
+### Consigna: Venta con un cliente o un libro inexistente, o con un libro dado de baja
+### Resultado esperado: 409 en los tres, sin dejar escrituras
+### ============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+
+### 1. Iniciar sesión como Vendedor
+# @name loginVendedor
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "vendedor@example.com",
+  "password": "Vendedor123!"
+}
+
+### 2. Intento 1: Venta con cliente inexistente (cliente_id = 99999) -> 409
+# @no-cookie-jar
+POST {{baseUrl}}/ventas
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "cliente_id": 99999,
+  "renglones": [
+    {
+      "libro_id": 1,
+      "cantidad": 1
+    }
+  ]
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 409 Conflict
+# Content-Type: application/json
+#
+# {
+#   "detail": "El cliente especificado no existe"
+# }
+# ------------------------------------------------------------------------------
+
+### 3. Intento 2: Venta con libro inexistente (libro_id = 99999) -> 409
+# @no-cookie-jar
+POST {{baseUrl}}/ventas
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "cliente_id": 1,
+  "renglones": [
+    {
+      "libro_id": 99999,
+      "cantidad": 1
+    }
+  ]
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 409 Conflict
+# Content-Type: application/json
+#
+# {
+#   "detail": "El libro con ID 99999 no existe en el catálogo"
+# }
+# ------------------------------------------------------------------------------
+
+### 4. Preparación para Intento 3: Login Admin y baja lógica de un libro
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+
+### Dar de baja lógica al libro 4 (Respiración artificial)
+# @no-cookie-jar
+DELETE {{baseUrl}}/libros/4
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+### 5. Intento 3: Venta con libro dado de baja lógica (libro_id = 4) -> 409
+# @no-cookie-jar
+POST {{baseUrl}}/ventas
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "cliente_id": 1,
+  "renglones": [
+    {
+      "libro_id": 4,
+      "cantidad": 1
+    }
+  ]
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 409 Conflict
+# Content-Type: application/json
+#
+# {
+#   "detail": "El libro Respiración artificial se encuentra descatalogado y no puede venderse"
+# }
+# En los tres casos no se genera ninguna escritura en la base de datos.
+# ------------------------------------------------------------------------------

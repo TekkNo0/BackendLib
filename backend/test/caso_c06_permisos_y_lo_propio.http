@@ -1,0 +1,85 @@
+### ============================================================================
+### CASO C-06: 401 contra 403, y acceso exclusivo a lo propio (RN-04, RN-14)
+### ============================================================================
+### Consigna: 401 contra 403, y lo propio
+### Resultado esperado: Sin sesión, 401; un vendedor que crea un libro, 403;
+### la cliente ve su venta (200) y no la ajena (403)
+### ============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+
+### 1. Sin sesión: intento de acceder a ruta protegida -> 401
+GET {{baseUrl}}/libros/1
+
+# ------------------------------------------------------------------------------
+# (Nota: Si el GET de libros es público, se prueba una ruta protegida como /ventas/1)
+# ------------------------------------------------------------------------------
+GET {{baseUrl}}/ventas/1
+
+# Respuesta esperada:
+# HTTP/1.1 401 Unauthorized
+# {"detail": "No autenticado: falta cookie access_token"}
+
+### 2. Login como VENDEDOR
+# @name loginVendedor
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "vendedor@example.com",
+  "password": "Vendedor123!"
+}
+
+### 3. Vendedor intenta crear un libro (Ruta restringida a ADMIN) -> 403
+# @no-cookie-jar
+POST {{baseUrl}}/libros
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "isbn": "978-987-1111-99-9",
+  "titulo": "Libro Ilegal por Vendedor",
+  "precio": 20000.00,
+  "editorial_id": 1,
+  "genero_id": 1,
+  "autores_ids": [1],
+  "stock_inicial": 5
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 403 Forbidden
+# {"detail": "No posee los permisos necesarios para realizar esta acción"}
+# ------------------------------------------------------------------------------
+
+### 4. Login como CLIENTE (Ana Paz, asociada al cliente_id = 3)
+# @name loginAna
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "ana@example.com",
+  "password": "Ana12345!"
+}
+
+### 5. Cliente Ana Paz consulta venta ajena (Venta 1, cliente_id = 1 Lucía Fernández) -> 403
+# @no-cookie-jar
+GET {{baseUrl}}/ventas/1
+Cookie: {{loginAna.response.headers.Set-Cookie}}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 403 Forbidden
+# {"detail": "No posee permisos para acceder a esta venta"}
+# ------------------------------------------------------------------------------
+
+### 6. Consulta de sus propias compras vía /mis-ventas -> 200 OK
+# @no-cookie-jar
+GET {{baseUrl}}/mis-ventas?page=1&size=10
+Cookie: {{loginAna.response.headers.Set-Cookie}}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# {"items": [...], "total": ..., "page": 1, "size": 10, "pages": ...}
+# ------------------------------------------------------------------------------

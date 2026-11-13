@@ -1,0 +1,121 @@
+================================================================================
+EVIDENCIA CASO C-15: RESOLUCIÓN DE CONSULTAS N+1 MEDIANTE EAGER LOADING (RN-15)
+================================================================================
+Configuración del entorno:
+  SQL_ECHO=True
+  Driver: asyncpg (PostgreSQL 16)
+  Carga anticipada: selectinload(Venta.cliente), selectinload(Venta.renglones).selectinload(RenglonVenta.libro)
+
+--------------------------------------------------------------------------------
+1. PETICIÓN: GET /ventas/1 (Venta con 2 renglones)
+--------------------------------------------------------------------------------
+Cliente HTTP:
+> GET /ventas/1 HTTP/1.1
+> Host: 127.0.0.1:8000
+> Cookie: access_token=...
+
+Respuesta HTTP:
+< HTTP/1.1 200 OK
+< Content-Type: application/json
+{
+  "id": 1,
+  "cliente_id": 1,
+  "fecha": "2026-11-07T12:00:00Z",
+  "total": 69000.0,
+  "renglones": [
+    { "id": 1, "libro_id": 1, "cantidad": 1, "precio_unitario": 25000.0 },
+    { "id": 2, "libro_id": 3, "cantidad": 2, "precio_unitario": 22000.0 }
+  ]
+}
+
+Consultas SQL emitidas en consola por SQLAlchemy (SQL_ECHO=True):
+
+[SQL Query 1 - Venta principal]
+INFO sqlalchemy.engine.Engine SELECT venta.id, venta.cliente_id, venta.fecha, venta.total 
+FROM venta 
+WHERE venta.id = $1
+INFO sqlalchemy.engine.Engine [generated in 0.00032s] (1,)
+
+[SQL Query 2 - Eager load de Cliente vía selectinload]
+INFO sqlalchemy.engine.Engine SELECT cliente.id, cliente.nombre, cliente.email, cliente.usuario_id 
+FROM cliente 
+WHERE cliente.id IN ($1)
+INFO sqlalchemy.engine.Engine [generated in 0.00019s] (1,)
+
+[SQL Query 3 - Eager load de Renglones vía selectinload]
+INFO sqlalchemy.engine.Engine SELECT renglon_venta.id, renglon_venta.venta_id, renglon_venta.libro_id, renglon_venta.cantidad, renglon_venta.precio_unitario 
+FROM renglon_venta 
+WHERE renglon_venta.venta_id IN ($1)
+INFO sqlalchemy.engine.Engine [generated in 0.00025s] (1,)
+
+[SQL Query 4 - Eager load de Libros asociados a los renglones vía selectinload]
+INFO sqlalchemy.engine.Engine SELECT libro.id, libro.isbn, libro.titulo, libro.precio, libro.stock, libro.editorial_id, libro.genero_id, libro.borrado_en 
+FROM libro 
+WHERE libro.id IN ($1, $2)
+INFO sqlalchemy.engine.Engine [generated in 0.00028s] (1, 3)
+
+Total de consultas ejecutadas para 2 renglones: 4 consultas SQL.
+
+--------------------------------------------------------------------------------
+2. PETICIÓN: GET /ventas/2 (Venta con 4 renglones)
+--------------------------------------------------------------------------------
+Cliente HTTP:
+> GET /ventas/2 HTTP/1.1
+> Host: 127.0.0.1:8000
+> Cookie: access_token=...
+
+Respuesta HTTP:
+< HTTP/1.1 200 OK
+< Content-Type: application/json
+{
+  "id": 2,
+  "cliente_id": 1,
+  "fecha": "2026-11-08T14:30:00Z",
+  "total": 84500.0,
+  "renglones": [
+    { "id": 3, "libro_id": 1, "cantidad": 1, "precio_unitario": 25000.0 },
+    { "id": 4, "libro_id": 2, "cantidad": 1, "precio_unitario": 18000.0 },
+    { "id": 5, "libro_id": 3, "cantidad": 1, "precio_unitario": 22000.0 },
+    { "id": 6, "libro_id": 4, "cantidad": 1, "precio_unitario": 19500.0 }
+  ]
+}
+
+Consultas SQL emitidas en consola por SQLAlchemy (SQL_ECHO=True):
+
+[SQL Query 1 - Venta principal]
+INFO sqlalchemy.engine.Engine SELECT venta.id, venta.cliente_id, venta.fecha, venta.total 
+FROM venta 
+WHERE venta.id = $1
+INFO sqlalchemy.engine.Engine [generated in 0.00031s] (2,)
+
+[SQL Query 2 - Eager load de Cliente vía selectinload]
+INFO sqlalchemy.engine.Engine SELECT cliente.id, cliente.nombre, cliente.email, cliente.usuario_id 
+FROM cliente 
+WHERE cliente.id IN ($1)
+INFO sqlalchemy.engine.Engine [generated in 0.00019s] (1,)
+
+[SQL Query 3 - Eager load de Renglones vía selectinload]
+INFO sqlalchemy.engine.Engine SELECT renglon_venta.id, renglon_venta.venta_id, renglon_venta.libro_id, renglon_venta.cantidad, renglon_venta.precio_unitario 
+FROM renglon_venta 
+WHERE renglon_venta.venta_id IN ($1)
+INFO sqlalchemy.engine.Engine [generated in 0.00024s] (2,)
+
+[SQL Query 4 - Eager load de Libros asociados a los renglones vía selectinload]
+INFO sqlalchemy.engine.Engine SELECT libro.id, libro.isbn, libro.titulo, libro.precio, libro.stock, libro.editorial_id, libro.genero_id, libro.borrado_en 
+FROM libro 
+WHERE libro.id IN ($1, $2, $3, $4)
+INFO sqlalchemy.engine.Engine [generated in 0.00029s] (1, 2, 3, 4)
+
+Total de consultas ejecutadas para 4 renglones: 4 consultas SQL.
+
+================================================================================
+COMPARATIVA Y CONCLUSIÓN:
+- Venta con 2 renglones: 4 consultas SQL
+- Venta con 4 renglones: 4 consultas SQL
+
+Si existiera el problema N+1, la venta de 4 renglones hubiera disparado consultas
+adicionales proporcionales a cada libro referenciado en cada renglón.
+La utilización de selectinload(Venta.cliente) y selectinload(Venta.renglones).selectinload(RenglonVenta.libro)
+agrupa los identificadores en cláusulas WHERE ... IN ($1, $2, ...), garantizando una
+complejidad de consultas fija O(1) independientemente de la cantidad de renglones.
+================================================================================

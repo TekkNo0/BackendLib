@@ -1,0 +1,88 @@
+### ============================================================================
+### CASO C-15: Prevención de problema N+1 con Eager Loading (RN-15, US-011)
+### ============================================================================
+### Consigna: Detalle de una venta con 2 y con 4 renglones
+### Resultado esperado: La misma cantidad de consultas en la consola
+### ============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+
+### 1. Iniciar sesión como Administrador
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+
+### 2. Consulta de detalle de venta con 2 renglones (Venta 1 del seed)
+# @no-cookie-jar
+GET {{baseUrl}}/ventas/1
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Content-Type: application/json
+#
+# {
+#   "id": 1,
+#   "cliente_id": 1,
+#   "total": 69000.0,
+#   "renglones": [
+#     {"id": 1, "libro_id": 1, "cantidad": 1, "precio_unitario": 25000.0},
+#     {"id": 2, "libro_id": 3, "cantidad": 2, "precio_unitario": 22000.0}
+#   ]
+# }
+# Cantidad de consultas SQL emitidas en consola (SQL_ECHO=True):
+# - 1 SELECT sobre venta
+# - 1 SELECT sobre renglon_venta (selectinload)
+# - 1 SELECT sobre libro (selectinload / joinedload)
+# TOTAL: 3 consultas.
+# ------------------------------------------------------------------------------
+
+### 3. Crear una venta con 4 renglones para comprobar que la cantidad de consultas no aumenta
+# @no-cookie-jar
+POST {{baseUrl}}/ventas
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "cliente_id": 1,
+  "renglones": [
+    {"libro_id": 1, "cantidad": 1},
+    {"libro_id": 2, "cantidad": 1},
+    {"libro_id": 3, "cantidad": 1},
+    {"libro_id": 4, "cantidad": 1}
+  ]
+}
+
+### 4. Consulta de detalle de la venta con 4 renglones (Venta 2)
+# @no-cookie-jar
+GET {{baseUrl}}/ventas/2
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Content-Type: application/json
+#
+# {
+#   "id": 2,
+#   "cliente_id": 1,
+#   "total": 84500.0,
+#   "renglones": [
+#     {"id": 3, "libro_id": 1, "cantidad": 1, "precio_unitario": 25000.0},
+#     {"id": 4, "libro_id": 2, "cantidad": 1, "precio_unitario": 18000.0},
+#     {"id": 5, "libro_id": 3, "cantidad": 1, "precio_unitario": 22000.0},
+#     {"id": 6, "libro_id": 4, "cantidad": 1, "precio_unitario": 19500.0}
+#   ]
+# }
+# Cantidad de consultas SQL emitidas en consola (SQL_ECHO=True):
+# - 1 SELECT sobre venta
+# - 1 SELECT sobre renglon_venta (selectinload)
+# - 1 SELECT sobre libro (selectinload / joinedload)
+# TOTAL: 3 consultas EXACTAMENTE IGUAL. Se demuestra que NO existe N+1.
+# ------------------------------------------------------------------------------

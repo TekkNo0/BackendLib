@@ -1,0 +1,111 @@
+### ==============================================================================
+### Casos de Prueba HTTP: Circuito de Ventas y Transacciones (C-10, C-11, C-12, C-15)
+### ==============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+
+### ------------------------------------------------------------------------------
+### 1. Inicios de Sesión
+### ------------------------------------------------------------------------------
+
+### 1.1 Login Vendedor
+# @name loginVendedor
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "vendedor@example.com",
+  "password": "Password123!"
+}
+
+### 1.2 Login Cliente Ana Paz
+# @name loginAna
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "ana@example.com",
+  "password": "Password123!"
+}
+
+
+### ------------------------------------------------------------------------------
+### 2. Caso C-10: Creación Atómica de Venta (RN-09, RN-10)
+### ------------------------------------------------------------------------------
+
+### 2.1 Venta exitosa: total y precios calculados en servidor, descuento de stock (HTTP 201)
+POST {{baseUrl}}/ventas
+Content-Type: application/json
+
+{
+  "cliente_id": 1,
+  "renglones": [
+    {
+      "libro_id": 1,
+      "cantidad": 1
+    },
+    {
+      "libro_id": 3,
+      "cantidad": 2
+    }
+  ]
+}
+
+### 2.2 Validación de contrato: rechaza libros duplicados en renglones (HTTP 422)
+POST {{baseUrl}}/ventas
+Content-Type: application/json
+
+{
+  "cliente_id": 1,
+  "renglones": [
+    {
+      "libro_id": 1,
+      "cantidad": 1
+    },
+    {
+      "libro_id": 1,
+      "cantidad": 2
+    }
+  ]
+}
+
+
+### ------------------------------------------------------------------------------
+### 3. Caso C-15: Rollback Atómico por Stock Insuficiente (RN-10)
+### ------------------------------------------------------------------------------
+
+### 3.1 Intento de compra con cantidad mayor al stock disponible (HTTP 409 Conflict)
+# El libro con stock insuficiente revierte todo el carrito sin alterar el otro libro
+POST {{baseUrl}}/ventas
+Content-Type: application/json
+
+{
+  "cliente_id": 1,
+  "renglones": [
+    {
+      "libro_id": 1,
+      "cantidad": 1
+    },
+    {
+      "libro_id": 5,
+      "cantidad": 9999
+    }
+  ]
+}
+
+
+### ------------------------------------------------------------------------------
+### 4. Casos C-11 y C-12: Aislamiento de Ventas por Cliente (RN-14)
+### ------------------------------------------------------------------------------
+
+### 4.1 Caso C-11: Ana Paz consulta sus compras propias en /mis-ventas (HTTP 200)
+GET {{baseUrl}}/mis-ventas?page=1&size=10
+
+### 4.2 Caso C-11: Ana Paz consulta el detalle de su propia compra (HTTP 200)
+GET {{baseUrl}}/ventas/1
+
+### 4.3 Caso C-12: Ana Paz intenta consultar venta de otro cliente (HTTP 403 Forbidden)
+GET {{baseUrl}}/ventas/2
+
+### 4.4 Personal administrativo consulta cualquier venta sin restricción (HTTP 200)
+GET {{baseUrl}}/ventas/2

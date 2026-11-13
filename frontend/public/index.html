@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Librería Los Pythons · Catálogo y Ventas</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <a href="#contenido-principal" class="skip-link visually-hidden">Ir al contenido principal</a>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <h1>Librería Los Pythons</h1>
+        <p class="subtitle">Catálogo, altas de libros y clientes, ventas e historial</p>
+      </div>
+      <nav aria-label="Navegación principal" class="main-nav">
+        <ul class="nav-list">
+          <li><button type="button" class="nav-btn is-active" data-view="catalogo" aria-current="page">Catálogo</button></li>
+          <li><button type="button" class="nav-btn" data-view="libros">Libros</button></li>
+          <li><button type="button" class="nav-btn" data-view="clientes">Clientes</button></li>
+          <li><button type="button" class="nav-btn" data-view="ventas">Ventas</button></li>
+          <li><button type="button" class="nav-btn" data-view="historial">Historial</button></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="contenido-principal" tabindex="-1" class="container">
+    <!-- VISTA 1: CATÁLOGO -->
+    <section id="vista-catalogo" class="view-section" aria-labelledby="heading-catalogo">
+      <div class="section-header">
+        <h2 id="heading-catalogo">Catálogo de libros</h2>
+      </div>
+
+      <search>
+        <form id="form-buscar-catalogo" class="search-bar" novalidate>
+          <div class="field-inline">
+            <label for="filtro-titulo">Buscar por título</label>
+            <input type="search" id="filtro-titulo" name="titulo" placeholder="Ej. Rayuela, Ficciones..." autocomplete="off">
+          </div>
+          <div class="search-actions">
+            <button type="submit" class="btn btn-primary">Buscar</button>
+            <button type="button" id="btn-limpiar-filtro" class="btn btn-secondary">Ver todos</button>
+          </div>
+        </form>
+      </search>
+
+      <div id="estado-catalogo" class="status-banner" role="status" aria-live="polite"></div>
+
+      <div tabindex="0" role="region" aria-labelledby="caption-catalogo" class="table-wrapper">
+        <table id="tabla-catalogo">
+          <caption id="caption-catalogo" class="visually-hidden">Listado de libros del catálogo</caption>
+          <thead>
+            <tr>
+              <th scope="col">Título</th>
+              <th scope="col">ISBN</th>
+              <th scope="col">Editorial</th>
+              <th scope="col">Género</th>
+              <th scope="col">Precio</th>
+              <th scope="col">Stock</th>
+              <th scope="col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-catalogo"></tbody>
+        </table>
+      </div>
+
+      <div class="pagination-bar" aria-label="Paginación del catálogo">
+        <button type="button" id="btn-cat-prev" class="btn btn-secondary">Anterior</button>
+        <span id="info-cat-paginacion" class="pagination-info">Página 1</span>
+        <button type="button" id="btn-cat-next" class="btn btn-secondary">Siguiente</button>
+      </div>
+    </section>
+
+    <!-- VISTA 2: ALTA Y LISTADO DE LIBROS -->
+    <section id="vista-libros" class="view-section" aria-labelledby="heading-libros" hidden>
+      <div class="section-header">
+        <h2 id="heading-libros">Alta de libros</h2>
+      </div>
+
+      <div class="grid-two-cols">
+        <article class="card">
+          <h3 id="form-libro-title">Registrar nuevo libro</h3>
+          <form id="form-alta-libro" aria-labelledby="form-libro-title" novalidate>
+            <div class="field">
+              <label for="libro-titulo">Título <span aria-hidden="true">*</span></label>
+              <input type="text" id="libro-titulo" name="titulo" required maxlength="255">
+            </div>
+
+            <div class="field">
+              <label for="libro-isbn">ISBN <span aria-hidden="true">*</span></label>
+              <input type="text" id="libro-isbn" name="isbn" required maxlength="20" autocorrect="off" autocapitalize="none" spellcheck="false">
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="libro-precio">Precio ($) <span aria-hidden="true">*</span></label>
+                <input type="number" id="libro-precio" name="precio" required min="0.01" step="0.01" inputmode="decimal">
+              </div>
+              <div class="field">
+                <label for="libro-stock">Stock inicial <span aria-hidden="true">*</span></label>
+                <input type="number" id="libro-stock" name="stock_inicial" required min="0" step="1" value="0" inputmode="numeric">
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="libro-editorial">Editorial <span aria-hidden="true">*</span></label>
+                <select id="libro-editorial" name="editorial_id" required>
+                  <option value="">Cargando editoriales...</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="libro-genero">Género (opcional)</label>
+                <select id="libro-genero" name="genero_id">
+                  <option value="">Sin clasificar</option>
+                </select>
+              </div>
+            </div>
+
+            <fieldset class="autores-fieldset">
+              <legend>Autorías del libro <span aria-hidden="true">*</span></legend>
+              <div class="field-row">
+                <div class="field">
+                  <label for="autor-selector">Seleccionar autor</label>
+                  <select id="autor-selector">
+                    <option value="">Cargando autores...</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="autor-id-verificar">O verificar por ID</label>
+                  <div class="inline-group">
+                    <input type="number" id="autor-id-verificar" min="1" step="1" inputmode="numeric" placeholder="ID">
+                    <button type="button" id="btn-verificar-autor" class="btn btn-secondary">Buscar ID</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label for="autor-rol">Rol</label>
+                  <select id="autor-rol">
+                    <option value="autor">autor</option>
+                    <option value="coautor">coautor</option>
+                    <option value="traductor">traductor</option>
+                    <option value="ilustrador">ilustrador</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="autor-orden">Orden</label>
+                  <input type="number" id="autor-orden" min="1" step="1" value="1" inputmode="numeric">
+                </div>
+              </div>
+
+              <div class="autores-actions">
+                <button type="button" id="btn-agregar-autor" class="btn btn-secondary">Agregar autoría</button>
+                <span id="autor-verificado-nombre" class="hint" aria-live="polite"></span>
+              </div>
+
+              <ul id="lista-autorias-borrador" class="chip-list" aria-label="Autorías agregadas"></ul>
+            </fieldset>
+
+            <div id="mensaje-alta-libro" class="form-feedback" role="status" aria-live="polite"></div>
+
+            <button type="submit" id="btn-submit-libro" class="btn btn-primary">Registrar libro</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h3>Últimos libros registrados</h3>
+          <div id="estado-libros-lista" class="status-banner" role="status" aria-live="polite"></div>
+          <div tabindex="0" role="region" aria-labelledby="caption-libros-registrados" class="table-wrapper">
+            <table>
+              <caption id="caption-libros-registrados" class="visually-hidden">Libros registrados recientemente</caption>
+              <thead>
+                <tr>
+                  <th scope="col">ID</th>
+                  <th scope="col">Título</th>
+                  <th scope="col">ISBN</th>
+                  <th scope="col">Precio</th>
+                  <th scope="col">Stock</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-libros-registrados"></tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- VISTA 3: ALTA Y LISTADO DE CLIENTES -->
+    <section id="vista-clientes" class="view-section" aria-labelledby="heading-clientes" hidden>
+      <div class="section-header">
+        <h2 id="heading-clientes">Clientes</h2>
+      </div>
+
+      <div class="grid-two-cols">
+        <article class="card">
+          <h3 id="form-cliente-title">Registrar nuevo cliente</h3>
+          <form id="form-alta-cliente" aria-labelledby="form-cliente-title" novalidate>
+            <div class="field">
+              <label for="cliente-nombre">Nombre completo <span aria-hidden="true">*</span></label>
+              <input type="text" id="cliente-nombre" name="nombre" required maxlength="255" autocomplete="name">
+            </div>
+
+            <div class="field">
+              <label for="cliente-email">Email <span aria-hidden="true">*</span></label>
+              <input type="email" id="cliente-email" name="email" required maxlength="255" autocomplete="email" autocorrect="off" autocapitalize="none" spellcheck="false">
+            </div>
+
+            <div id="mensaje-alta-cliente" class="form-feedback" role="status" aria-live="polite"></div>
+
+            <button type="submit" id="btn-submit-cliente" class="btn btn-primary">Registrar cliente</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h3>Clientes registrados</h3>
+          <form id="form-buscar-cliente-id" class="inline-search" novalidate>
+            <label for="cliente-id-buscar">Buscar cliente por ID</label>
+            <div class="inline-group">
+              <input type="number" id="cliente-id-buscar" min="1" step="1" inputmode="numeric" placeholder="Ej. 1">
+              <button type="submit" class="btn btn-secondary">Consultar ID</button>
+            </div>
+          </form>
+          <div id="resultado-cliente-id" class="hint" role="status" aria-live="polite"></div>
+          <div id="estado-clientes-lista" class="status-banner" role="status" aria-live="polite"></div>
+
+          <div tabindex="0" role="region" aria-labelledby="caption-clientes" class="table-wrapper">
+            <table>
+              <caption id="caption-clientes" class="visually-hidden">Listado de clientes</caption>
+              <thead>
+                <tr>
+                  <th scope="col">ID</th>
+                  <th scope="col">Nombre</th>
+                  <th scope="col">Email</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-clientes"></tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- VISTA 4: REGISTRAR VENTA -->
+    <section id="vista-ventas" class="view-section" aria-labelledby="heading-ventas" hidden>
+      <div class="section-header">
+        <h2 id="heading-ventas">Registrar venta</h2>
+      </div>
+
+      <div class="grid-two-cols">
+        <article class="card">
+          <h3 id="form-venta-title">Componer venta</h3>
+          <form id="form-venta" aria-labelledby="form-venta-title" novalidate>
+            <div class="field">
+              <label for="venta-cliente">Cliente <span aria-hidden="true">*</span></label>
+              <select id="venta-cliente" name="cliente_id" required>
+                <option value="">Seleccioná un cliente...</option>
+              </select>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="venta-cliente-id-directo">O verificar cliente por ID</label>
+                <div class="inline-group">
+                  <input type="number" id="venta-cliente-id-directo" min="1" step="1" inputmode="numeric" placeholder="ID cliente">
+                  <button type="button" id="btn-venta-buscar-cliente" class="btn btn-secondary">Seleccionar</button>
+                </div>
+              </div>
+            </div>
+
+            <fieldset class="autores-fieldset">
+              <legend>Agregar libro al borrador</legend>
+              <div class="field-row">
+                <div class="field">
+                  <label for="venta-libro">Libro</label>
+                  <select id="venta-libro">
+                    <option value="">Seleccioná un libro...</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="venta-cantidad">Cantidad</label>
+                  <input type="number" id="venta-cantidad" min="1" step="1" value="1" inputmode="numeric">
+                </div>
+              </div>
+              <button type="button" id="btn-agregar-renglon" class="btn btn-secondary">Agregar renglón</button>
+            </fieldset>
+
+            <div tabindex="0" role="region" aria-labelledby="caption-borrador-venta" class="table-wrapper">
+              <table>
+                <caption id="caption-borrador-venta" class="visually-hidden">Renglones en borrador</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Libro</th>
+                    <th scope="col">P. Unit.</th>
+                    <th scope="col">Cant.</th>
+                    <th scope="col">Subtotal</th>
+                    <th scope="col">Quitar</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-borrador-venta"></tbody>
+              </table>
+            </div>
+
+            <div class="venta-totales">
+              <span>Total estimado:</span>
+              <strong id="venta-total-estimado">$0.00</strong>
+            </div>
+
+            <div id="mensaje-venta" class="form-feedback" role="status" aria-live="polite"></div>
+
+            <button type="submit" id="btn-confirmar-venta" class="btn btn-primary">Confirmar venta</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h3>Última venta confirmada</h3>
+          <div id="resumen-venta-confirmada" class="empty-note">
+            Todavía no se registró una venta en esta sesión.
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- VISTA 5: HISTORIAL DE VENTAS -->
+    <section id="vista-historial" class="view-section" aria-labelledby="heading-historial" hidden>
+      <div class="section-header">
+        <h2 id="heading-historial">Historial de ventas</h2>
+        <button type="button" id="btn-refrescar-historial" class="btn btn-secondary">Actualizar</button>
+      </div>
+
+      <div id="estado-historial" class="status-banner" role="status" aria-live="polite"></div>
+
+      <div tabindex="0" role="region" aria-labelledby="caption-historial" class="table-wrapper">
+        <table>
+          <caption id="caption-historial" class="visually-hidden">Listado histórico de ventas</caption>
+          <thead>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Fecha</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Total</th>
+              <th scope="col">Detalle</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-historial"></tbody>
+        </table>
+      </div>
+
+      <div class="pagination-bar" aria-label="Paginación del historial">
+        <button type="button" id="btn-hist-prev" class="btn btn-secondary">Anterior</button>
+        <span id="info-hist-paginacion" class="pagination-info">Página 1</span>
+        <button type="button" id="btn-hist-next" class="btn btn-secondary">Siguiente</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL DETALLE DE LIBRO -->
+  <dialog id="dialog-libro" closedby="any" aria-labelledby="dialog-libro-titulo">
+    <form method="dialog" class="dialog-content">
+      <div class="dialog-header">
+        <h2 id="dialog-libro-titulo">Detalle del libro</h2>
+        <button type="submit" class="btn btn-secondary">Cerrar</button>
+      </div>
+      <div id="dialog-libro-cuerpo" class="dialog-body"></div>
+    </form>
+  </dialog>
+
+  <!-- MODAL DETALLE DE VENTA -->
+  <dialog id="dialog-venta" closedby="any" aria-labelledby="dialog-venta-titulo">
+    <form method="dialog" class="dialog-content">
+      <div class="dialog-header">
+        <h2 id="dialog-venta-titulo">Detalle de venta</h2>
+        <button type="submit" class="btn btn-secondary">Cerrar</button>
+      </div>
+      <div id="dialog-venta-cuerpo" class="dialog-body"></div>
+    </form>
+  </dialog>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

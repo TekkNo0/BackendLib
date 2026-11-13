@@ -1,0 +1,140 @@
+### ============================================================================
+### CASO C-16: Búsqueda segura, paginación estricta y restricción de PATCH
+### ============================================================================
+### Consigna: Búsqueda con ' OR '1'='1 ; paginación con filtro; PATCH parcial;
+### PATCH del stock
+### Resultado esperado: Lista vacía con total 0; con titulo=ficc&size=1, total 1
+### y pages 1, y page=2 da 422; size=500, 422; sólo cambia lo enviado; el PATCH con stock, 422
+### ============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+
+### 1. Iniciar sesión como Administrador
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+
+### 2. Intento de inyección SQL en parámetro titulo -> Lista vacía con total 0
+GET {{baseUrl}}/libros?titulo=' OR '1'='1
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Content-Type: application/json
+#
+# {
+#   "items": [],
+#   "total": 0,
+#   "page": 1,
+#   "size": 10,
+#   "pages": 0
+# }
+# SQLAlchemy parametriza la consulta de forma segura, impidiendo la inyección.
+# ------------------------------------------------------------------------------
+
+### 3. Paginación con filtro: titulo=ficc y size=1 -> total 1 y pages 1
+GET {{baseUrl}}/libros?titulo=ficc&size=1
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Content-Type: application/json
+#
+# {
+#   "items": [{"id": 3, "titulo": "Ficciones", ...}],
+#   "total": 1,
+#   "page": 1,
+#   "size": 1,
+#   "pages": 1
+# }
+# ------------------------------------------------------------------------------
+
+### 4. Petición con page=2 cuando sólo hay 1 página -> 422 Unprocessable Entity
+GET {{baseUrl}}/libros?titulo=ficc&size=1&page=2
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 422 Unprocessable Entity
+# Content-Type: application/json
+#
+# {
+#   "detail": "La página solicitada (2) excede el total de páginas (1)"
+# }
+# ------------------------------------------------------------------------------
+
+### 5. Petición con size=500 superando el límite máximo permitido (100) -> 422
+GET {{baseUrl}}/libros?size=500
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 422 Unprocessable Entity
+# Content-Type: application/json
+#
+# {
+#   "detail": [
+#     {
+#       "loc": ["query", "size"],
+#       "msg": "Input should be less than or equal to 100",
+#       "type": "less_than_equal"
+#     }
+#   ]
+# }
+# ------------------------------------------------------------------------------
+
+### 6. PATCH parcial: sólo cambia lo enviado (título y precio)
+# @no-cookie-jar
+PATCH {{baseUrl}}/libros/1
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "titulo": "Rayuela - Edición Especial",
+  "precio": 29900.00
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Content-Type: application/json
+#
+# {
+#   "id": 1,
+#   "titulo": "Rayuela - Edición Especial",
+#   "precio": 29900.00,
+#   "stock": 10,
+#   ...
+# }
+# Los demás campos permanecen inalterados.
+# ------------------------------------------------------------------------------
+
+### 7. PATCH intentando modificar stock -> 422 Unprocessable Entity (RN-11)
+# @no-cookie-jar
+PATCH {{baseUrl}}/libros/1
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "stock": 99
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 422 Unprocessable Entity
+# Content-Type: application/json
+#
+# {
+#   "detail": [
+#     {
+#       "loc": ["body", "stock"],
+#       "msg": "Extra inputs are not permitted",
+#       "type": "extra_forbidden"
+#     }
+#   ]
+# }
+# El stock no puede modificarse por PATCH; sólo por alta, reposición o venta.
+# ------------------------------------------------------------------------------

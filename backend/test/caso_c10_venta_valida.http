@@ -1,0 +1,73 @@
+### ============================================================================
+### CASO C-10: Venta válida atómica con dos renglones (RN-09, RN-10)
+### ============================================================================
+### Consigna: Venta válida con dos renglones
+### Resultado esperado: 201 con los precios copiados y el total; el stock de cada
+### libro bajó, hay un movimiento por renglón y el aviso sale en el registro
+### después de la respuesta
+### ============================================================================
+
+@baseUrl = http://127.0.0.1:8000
+
+### 1. Iniciar sesión como Vendedor
+# @name loginVendedor
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "vendedor@example.com",
+  "password": "Vendedor123!"
+}
+
+### 2. Registrar venta con dos libros (Libro 1: Rayuela $25000, Libro 3: Ficciones $22000)
+# @no-cookie-jar
+POST {{baseUrl}}/ventas
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+Content-Type: application/json
+
+{
+  "cliente_id": 1,
+  "renglones": [
+    {
+      "libro_id": 1,
+      "cantidad": 1
+    },
+    {
+      "libro_id": 3,
+      "cantidad": 2
+    }
+  ]
+}
+
+# ------------------------------------------------------------------------------
+# Respuesta esperada:
+# HTTP/1.1 201 Created
+# Content-Type: application/json
+#
+# {
+#   "id": 2,
+#   "cliente_id": 1,
+#   "fecha": "2026-...",
+#   "total": 69000.0,
+#   "renglones": [
+#     {
+#       "id": 3,
+#       "libro_id": 1,
+#       "cantidad": 1,
+#       "precio_unitario": 25000.0
+#     },
+#     {
+#       "id": 4,
+#       "libro_id": 3,
+#       "cantidad": 2,
+#       "precio_unitario": 22000.0
+#     }
+#   ]
+# }
+# Efectos verificables:
+# - Stock de Rayuela (ID 1) disminuye de 10 a 9.
+# - Stock de Ficciones (ID 3) disminuye de 8 a 6.
+# - Se insertan 2 filas en movimiento_stock con motivo "Venta".
+# - En consola Uvicorn se emite en segundo plano tras el commit:
+#   "[BACKGROUND TASK] Comprobante emitido para la venta #2. Cliente #1. Total: $69000.00"
+# ------------------------------------------------------------------------------
