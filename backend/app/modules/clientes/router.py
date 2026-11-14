@@ -17,7 +17,8 @@ async def listar_clientes(
     session: AsyncSession = Depends(get_session),
 ):
     repo = ClienteRepository(session)
-    items, total = await repo.listar(offset=params.offset, limit=params.limit)
+    items = await repo.get_all(offset=params.offset, limit=params.limit)
+    total = await repo.count()
     mapped = [ClienteResponse.model_validate(c) for c in items]
     return paginate(mapped, total, params)
 
